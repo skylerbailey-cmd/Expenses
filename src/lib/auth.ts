@@ -3,12 +3,14 @@ import { redirect } from "next/navigation";
 import { prisma } from "./db";
 import { getSession } from "./session";
 
+export type Role = "EMPLOYEE" | "MANAGER" | "ADMIN";
+
 export type SafeUser = {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  role: "EMPLOYEE" | "ADMIN";
+  role: Role;
 };
 
 /** Returns the logged-in user, or null if not authenticated. */
@@ -24,7 +26,7 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
-    role: user.role as "EMPLOYEE" | "ADMIN",
+    role: user.role as Role,
   };
 }
 
@@ -35,9 +37,14 @@ export async function requireUser(): Promise<SafeUser> {
   return user;
 }
 
-/** Use in pages: redirects non-admins away. */
+/** Returns true when the role has access to the admin / manager console. */
+export function isStaff(role: Role): boolean {
+  return role === "ADMIN" || role === "MANAGER";
+}
+
+/** Use in pages: redirects non-staff (employees) away. */
 export async function requireAdmin(): Promise<SafeUser> {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/dashboard");
+  if (!isStaff(user.role)) redirect("/dashboard");
   return user;
 }

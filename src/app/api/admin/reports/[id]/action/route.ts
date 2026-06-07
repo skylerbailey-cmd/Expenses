@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaff } from "@/lib/auth";
 
 const schema = z.object({
   action: z.enum(["approve", "return", "pay"]),
   note: z.string().trim().max(1000).optional(),
 });
 
-// Admin-only state transitions for a submitted report.
+// Staff state transitions for a submitted report.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
+  if (!user || !isStaff(user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -29,6 +29,14 @@ export async function POST(
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { action, note } = parsed.data;
+
+  // Managers can approve and return but cannot mark as paid.
+  if (action === "pay" && user.role !== "ADMIN") {
+    return NextResponse.json(
+      { error: "Only admins can mark reports as paid." },
+      { status: 403 }
+    );
+  }
 
   // Validate the transition.
   const transitions: Record<string, string[]> = {

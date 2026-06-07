@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaff } from "@/lib/auth";
 import { getReportForUser, EDITABLE_BY_EMPLOYEE } from "@/lib/reports";
 import { saveUpload, isAllowedType, MAX_FILE_BYTES } from "@/lib/storage";
 import { extractReceipt, aiEnabled } from "@/lib/ai";
@@ -20,7 +20,7 @@ export async function POST(
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Employees may only add to draft/returned reports.
-  if (user.role !== "ADMIN" && !EDITABLE_BY_EMPLOYEE.has(report.status)) {
+  if (!isStaff(user.role) && !EDITABLE_BY_EMPLOYEE.has(report.status)) {
     return NextResponse.json(
       { error: "This report can no longer be edited." },
       { status: 409 }

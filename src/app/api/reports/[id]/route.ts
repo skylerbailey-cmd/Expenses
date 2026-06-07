@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaff } from "@/lib/auth";
 import { getReportForUser, EDITABLE_BY_EMPLOYEE } from "@/lib/reports";
 import { deleteUpload } from "@/lib/storage";
 
@@ -22,7 +22,7 @@ export async function PATCH(
   const report = await getReportForUser(id, user);
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (user.role !== "ADMIN" && !EDITABLE_BY_EMPLOYEE.has(report.status)) {
+  if (!isStaff(user.role) && !EDITABLE_BY_EMPLOYEE.has(report.status)) {
     return NextResponse.json(
       { error: "This report can no longer be edited." },
       { status: 409 }

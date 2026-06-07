@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "./db";
 import type { SafeUser } from "./auth";
+import { isStaff } from "./auth";
 
 /** Statuses an employee is allowed to edit. */
 export const EDITABLE_BY_EMPLOYEE = new Set(["DRAFT", "RETURNED"]);
@@ -22,7 +23,7 @@ export async function getReportForUser(reportId: string, user: SafeUser) {
     },
   });
   if (!report) return null;
-  if (user.role !== "ADMIN" && report.userId !== user.id) return null;
+  if (!isStaff(user.role) && report.userId !== user.id) return null;
   return report;
 }
 

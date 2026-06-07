@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
   const session = await getSession();
   session.userId = user.id;
-  session.role = user.role as "EMPLOYEE" | "ADMIN";
+  session.role = user.role as "EMPLOYEE" | "MANAGER" | "ADMIN";
   await session.save();
 
   return NextResponse.json({ ok: true, role: user.role });

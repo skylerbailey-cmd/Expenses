@@ -1,3 +1,7 @@
+// Companies / business entities that expenses can be assigned to.
+export const COMPANIES = ["Glow SF", "Desert Wellness"] as const;
+export type Company = (typeof COMPANIES)[number];
+
 // Expense categories tuned for the kinds of things employees commonly submit.
 export const CATEGORIES = [
   "Rideshare", // Uber, Lyft, taxi

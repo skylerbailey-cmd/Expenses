@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isStaff } from "@/lib/auth";
 import { EDITABLE_BY_EMPLOYEE } from "@/lib/reports";
-import { CATEGORIES } from "@/lib/constants";
+import { CATEGORIES, COMPANIES } from "@/lib/constants";
 import { deleteUpload } from "@/lib/storage";
 
 const patchSchema = z.object({
+  company: z.enum(COMPANIES).nullable().optional(),
   merchant: z.string().trim().max(120).nullable().optional(),
   amount: z.number().nonnegative().nullable().optional(),
   currency: z.string().trim().max(8).optional(),
@@ -33,7 +34,7 @@ export async function PATCH(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const expense = await loadExpenseFor(id, user.id, user.role === "ADMIN");
+  const expense = await loadExpenseFor(id, user.id, isStaff(user.role));
   if (!expense) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Employees can only edit while draft/returned; admins can edit anytime
@@ -58,6 +59,7 @@ export async function PATCH(
   await prisma.expense.update({
     where: { id },
     data: {
+      ...(d.company !== undefined ? { company: d.company } : {}),
       ...(d.merchant !== undefined ? { merchant: d.merchant } : {}),
       ...(d.amount !== undefined ? { amount: d.amount } : {}),
       ...(d.currency !== undefined ? { currency: d.currency } : {}),
@@ -86,7 +88,7 @@ export async function DELETE(
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const expense = await loadExpenseFor(id, user.id, user.role === "ADMIN");
+  const expense = await loadExpenseFor(id, user.id, isStaff(user.role));
   if (!expense) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (user.role !== "ADMIN" && !EDITABLE_BY_EMPLOYEE.has(expense.report.status)) {

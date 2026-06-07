@@ -6,9 +6,11 @@ import { useState } from "react";
 export function AdminActions({
   reportId,
   status,
+  userRole = "ADMIN",
 }: {
   reportId: string;
   status: string;
+  userRole?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -36,7 +38,7 @@ export function AdminActions({
   }
 
   const canApprove = status === "SUBMITTED";
-  const canPay = status === "APPROVED";
+  const canPay = status === "APPROVED" && userRole === "ADMIN";
   const canReturn = status === "SUBMITTED" || status === "APPROVED";
 
   if (status === "PAID") {

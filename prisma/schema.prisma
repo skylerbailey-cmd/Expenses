@@ -30,7 +30,7 @@ model ExpenseReport {
   // Workflow: DRAFT -> SUBMITTED -> (RETURNED -> SUBMITTED)* -> APPROVED -> PAID
   status             String    @default("DRAFT")
   adminNote          String?
-  user               User      @relation(fields: [userId], references: [id])
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId             String
   expenses           Expense[]
   createdAt          DateTime  @default(now())
@@ -45,6 +45,7 @@ model Expense {
   id              String         @id @default(cuid())
   report          ExpenseReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
   reportId        String
+  company         String?
   merchant        String?
   amount          Float?
   currency        String         @default("USD")

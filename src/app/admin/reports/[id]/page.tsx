@@ -57,6 +57,7 @@ export default async function AdminReportPage({
 
   const expenseDTOs: ExpenseDTO[] = report.expenses.map((e) => ({
     id: e.id,
+    company: e.company,
     merchant: e.merchant,
     amount: e.amount,
     currency: e.currency,
@@ -110,7 +111,7 @@ export default async function AdminReportPage({
         </div>
 
         <div className="mt-4">
-          <AdminActions reportId={report.id} status={report.status} />
+          <AdminActions reportId={report.id} status={report.status} userRole={user.role} />
         </div>
 
         {editable && (

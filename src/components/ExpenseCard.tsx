@@ -2,11 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CATEGORIES } from "@/lib/constants";
+import { CATEGORIES, COMPANIES } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { ReceiptLightbox } from "./ReceiptLightbox";
 
 export interface ExpenseDTO {
   id: string;
+  company: string | null;
   merchant: string | null;
   amount: number | null;
   currency: string;
@@ -28,6 +30,7 @@ export function ExpenseCard({
   duplicateWarning?: string;
 }) {
   const router = useRouter();
+  const [company, setCompany] = useState(expense.company ?? "");
   const [merchant, setMerchant] = useState(expense.merchant ?? "");
   const [amount, setAmount] = useState(
     expense.amount != null ? String(expense.amount) : ""
@@ -40,6 +43,7 @@ export function ExpenseCard({
   const [error, setError] = useState<string | null>(null);
 
   const dirty =
+    company !== (expense.company ?? "") ||
     merchant !== (expense.merchant ?? "") ||
     amount !== (expense.amount != null ? String(expense.amount) : "") ||
     date !== (expense.transactionDate ?? "") ||
@@ -54,6 +58,7 @@ export function ExpenseCard({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        company: company || null,
         merchant: merchant.trim() || null,
         amount: amount.trim() ? Number(amount) : null,
         category: category || null,
@@ -92,40 +97,54 @@ export function ExpenseCard({
         </p>
       )}
 
-      <div className="flex gap-4">
-        {/* Receipt thumbnails */}
-        <div className="flex shrink-0 flex-col gap-2">
-          {expense.images.map((img) => (
-            <a
-              key={img.id}
-              href={img.path}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
-            >
+      {/* Receipt thumbnails — tap to zoom */}
+      <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+        {expense.images.map((img) => (
+          <ReceiptLightbox key={img.id} src={img.path}>
+            <span className="block h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={img.path}
                 alt="Receipt"
                 className="h-full w-full object-cover"
               />
-            </a>
-          ))}
-        </div>
+            </span>
+          </ReceiptLightbox>
+        ))}
+      </div>
 
-        <div className="min-w-0 flex-1">
+      <div className="min-w-0">
           {editable ? (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Labeled label="Merchant / company">
-                  <input
-                    value={merchant}
-                    onChange={(e) => setMerchant(e.target.value)}
-                    placeholder="e.g. Uber"
-                    className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none focus:border-slate-900"
-                  />
-                </Labeled>
-                <Labeled label="Total amount">
+              {/* Company — full width */}
+              <Labeled label="Company">
+                <select
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm outline-none focus:border-slate-900"
+                >
+                  <option value="">Select…</option>
+                  {COMPANIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </Labeled>
+
+              {/* Merchant — full width so it never overlaps */}
+              <Labeled label="Merchant / vendor">
+                <input
+                  value={merchant}
+                  onChange={(e) => setMerchant(e.target.value)}
+                  placeholder="e.g. Uber"
+                  className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none focus:border-slate-900"
+                />
+              </Labeled>
+
+              {/* Amount + Date: stacked on tiny screens, side by side on sm+ */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Labeled label="Amount">
                   <input
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
@@ -142,21 +161,24 @@ export function ExpenseCard({
                     className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none focus:border-slate-900"
                   />
                 </Labeled>
-                <Labeled label="Category">
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm outline-none focus:border-slate-900"
-                  >
-                    <option value="">Select…</option>
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </Labeled>
               </div>
+
+              {/* Category — full width */}
+              <Labeled label="Category">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm outline-none focus:border-slate-900"
+                >
+                  <option value="">Select…</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </Labeled>
+
               <Labeled label="Description">
                 <input
                   value={description}
@@ -193,7 +215,6 @@ export function ExpenseCard({
             <ReadOnlyExpense expense={expense} />
           )}
         </div>
-      </div>
     </div>
   );
 }
@@ -201,6 +222,10 @@ export function ExpenseCard({
 function ReadOnlyExpense({ expense }: { expense: ExpenseDTO }) {
   return (
     <dl className="space-y-1 text-sm">
+      <div className="flex justify-between">
+        <dt className="text-slate-500">Company</dt>
+        <dd className="font-medium text-slate-900">{expense.company ?? "—"}</dd>
+      </div>
       <div className="flex justify-between">
         <dt className="text-slate-500">Merchant</dt>
         <dd className="font-medium text-slate-900">{expense.merchant ?? "—"}</dd>

@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 
 export interface SessionData {
   userId?: string;
-  role?: "EMPLOYEE" | "ADMIN";
+  role?: "EMPLOYEE" | "MANAGER" | "ADMIN";
 }
 
 const DEV_FALLBACK = "dev-only-session-secret-change-me-please-32chars";
