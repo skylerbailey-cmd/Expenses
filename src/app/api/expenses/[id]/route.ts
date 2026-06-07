@@ -14,6 +14,8 @@ const patchSchema = z.object({
   category: z.enum(CATEGORIES).nullable().optional(),
   description: z.string().trim().max(500).nullable().optional(),
   transactionDate: z.string().nullable().optional(), // YYYY-MM-DD
+  denied: z.boolean().optional(),
+  deniedReason: z.string().trim().max(500).nullable().optional(),
 });
 
 async function loadExpenseFor(expenseId: string, userId: string, isAdmin: boolean) {

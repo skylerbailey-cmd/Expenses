@@ -60,6 +60,8 @@ model Expense {
   aiRaw           String? // JSON snapshot of what the AI returned
   aiConfidence    String? // low | medium | high
   needsReview     Boolean        @default(false)
+  denied          Boolean        @default(false)
+  deniedReason    String?
   qboPurchaseId   String? // QuickBooks Purchase id once synced (prevents duplicates)
   createdAt       DateTime       @default(now())
 
