@@ -16,6 +16,8 @@ report. Admins approve, edit, return, or mark reports paid.
   report and against the employee's history) but **never block** submission.
 - 👤 **Named reports** — each report carries the submitter's first and last name.
 - 🔐 **Roles** — employees submit; admins approve / edit / return / mark paid.
+- 📒 **QuickBooks Online sync** — approved expenses post to QuickBooks as
+  Purchases with their receipt images attached (optional).
 - 📱 **Mobile-first** UI that also works great on desktop.
 
 ## Tech stack
@@ -97,6 +99,38 @@ Volume** so they survive restarts and redeploys.
 
 To promote an admin later: open the service shell and run
 `npm run make-admin -- you@example.com`.
+
+## QuickBooks Online integration (optional)
+
+When connected, the admin can push an approved report's expenses into QuickBooks
+Online — each expense becomes a **Purchase** (with the receipt image attached),
+posted to the expense account you map its category to.
+
+**One-time setup:**
+
+1. Go to [developer.intuit.com](https://developer.intuit.com), create an app,
+   and add the **Accounting** scope. Copy the app's **Client ID** and
+   **Client Secret** (use the *Development* keys with `sandbox`, or *Production*
+   keys when going live).
+2. In the Intuit app's OAuth settings, add this **Redirect URI** (it's also
+   shown on the in-app Settings page):
+   `https://YOUR-APP-URL/api/quickbooks/callback`
+3. Set these environment variables and redeploy:
+
+   | Variable           | Value                                            |
+   | ------------------ | ------------------------------------------------ |
+   | `QBO_CLIENT_ID`     | from your Intuit app                             |
+   | `QBO_CLIENT_SECRET` | from your Intuit app                             |
+   | `QBO_ENVIRONMENT`   | `sandbox` while testing, `production` when live  |
+   | `APP_URL`           | your app's public URL (e.g. the Railway domain)  |
+
+4. In the app, sign in as admin → **Settings → Connect to QuickBooks**, approve
+   the connection, then pick the **payment account** and map each expense
+   **category** to a QuickBooks expense account.
+
+**Using it:** open an **Approved** (or Paid) report → **Send to QuickBooks**.
+Already-synced expenses are skipped, so it's safe to click again. Unmapped
+categories are reported and skipped rather than failing the whole report.
 
 ## Notes for production
 

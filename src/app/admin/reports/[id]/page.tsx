@@ -9,6 +9,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ExpenseCard, type ExpenseDTO } from "@/components/ExpenseCard";
 import { AdminActions } from "@/components/AdminActions";
 import { AdminDeleteReportButton } from "@/components/AdminDeleteReportButton";
+import { QboSyncPanel } from "@/components/QboSyncPanel";
+import { qboConfigured, getConnection } from "@/lib/quickbooks";
 import { formatCurrency, formatDate, toDateInputValue } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +57,11 @@ export default async function AdminReportPage({
     reportTitle: e.report.title,
   }));
   const warnings = findDuplicateWarnings(current, existing);
+
+  // QuickBooks status for this report.
+  const qboConnection = qboConfigured() ? await getConnection() : null;
+  const qboNeedsSetup = !qboConnection || !qboConnection.paymentAccountId;
+  const qboSyncedCount = report.expenses.filter((e) => e.qboPurchaseId).length;
 
   const expenseDTOs: ExpenseDTO[] = report.expenses.map((e) => ({
     id: e.id,
@@ -114,6 +121,18 @@ export default async function AdminReportPage({
         <div className="mt-4">
           <AdminActions reportId={report.id} status={report.status} userRole={user.role} />
         </div>
+
+        {user.role === "ADMIN" &&
+          (report.status === "APPROVED" || report.status === "PAID") && (
+          <div className="mt-4">
+            <QboSyncPanel
+              reportId={report.id}
+              syncedCount={qboSyncedCount}
+              totalCount={report.expenses.length}
+              needsSetup={qboNeedsSetup}
+            />
+          </div>
+        )}
 
         {editable && (
           <p className="mt-4 text-xs text-slate-400">

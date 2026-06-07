@@ -37,6 +37,10 @@ model ExpenseReport {
   updatedAt          DateTime  @updatedAt
   submittedAt        DateTime?
 
+  // QuickBooks sync tracking
+  qboSyncedAt        DateTime?
+  qboError           String?
+
   @@index([userId])
   @@index([status])
 }
@@ -56,6 +60,7 @@ model Expense {
   aiRaw           String? // JSON snapshot of what the AI returned
   aiConfidence    String? // low | medium | high
   needsReview     Boolean        @default(false)
+  qboPurchaseId   String? // QuickBooks Purchase id once synced (prevents duplicates)
   createdAt       DateTime       @default(now())
 
   @@index([reportId])
@@ -65,8 +70,32 @@ model ExpenseImage {
   id        String   @id @default(cuid())
   expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   expenseId String
-  path      String // public web path, e.g. /uploads/abc.jpg
+  path      String // served URL, e.g. /api/files/abc.jpg
   createdAt DateTime @default(now())
 
   @@index([expenseId])
+}
+
+// Single-row table holding the QuickBooks Online OAuth connection + settings.
+// There is one company connection for the whole app (id is always "default").
+model QuickBooksConnection {
+  id                    String   @id @default("default")
+  realmId               String // QuickBooks company id
+  environment           String   @default("production") // sandbox | production
+  accessToken           String
+  refreshToken          String
+  accessTokenExpiresAt  DateTime
+  // The account purchases are paid from (bank or credit card) + how.
+  paymentAccountId      String?
+  paymentAccountName    String?
+  paymentType           String   @default("CreditCard") // Cash | Check | CreditCard
+  connectedAt           DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// Maps an app expense category (e.g. "Rideshare") to a QuickBooks expense account.
+model QboAccountMap {
+  category    String @id // matches CATEGORIES values
+  accountId   String
+  accountName String
 }
