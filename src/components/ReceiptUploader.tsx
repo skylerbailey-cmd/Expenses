@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 
 export function ReceiptUploader({
   reportId,
@@ -11,23 +11,36 @@ export function ReceiptUploader({
   aiEnabled: boolean;
 }) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [staged, setStaged] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
-  async function upload(files: FileList | null) {
+  const addFiles = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
+    setStaged((prev) => [...prev, ...Array.from(files)]);
+    setStatus(null);
+    setErrors([]);
+  }, []);
+
+  function removeFile(index: number) {
+    setStaged((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function submit() {
+    if (staged.length === 0) return;
     setUploading(true);
     setErrors([]);
     setStatus(
-      `Uploading ${files.length} receipt${files.length === 1 ? "" : "s"}${
+      `Uploading ${staged.length} receipt${staged.length === 1 ? "" : "s"}${
         aiEnabled ? " and reading them with AI…" : "…"
       }`
     );
 
     const body = new FormData();
-    Array.from(files).forEach((f) => body.append("files", f));
+    staged.forEach((f) => body.append("files", f));
 
     try {
       const res = await fetch(`/api/reports/${reportId}/expenses`, {
@@ -43,40 +56,117 @@ export function ReceiptUploader({
             (data.aiEnabled ? "" : " Add the details manually below.")
         );
         if (Array.isArray(data.errors)) setErrors(data.errors);
+        setStaged([]);
         router.refresh();
       }
     } catch {
       setErrors(["Something went wrong while uploading."]);
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
+      if (galleryRef.current) galleryRef.current.value = "";
+      if (cameraRef.current) cameraRef.current.value = "";
     }
   }
 
   return (
     <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-5 text-center">
+      {/* Hidden file inputs */}
       <input
-        ref={inputRef}
+        ref={galleryRef}
         type="file"
         accept="image/*,application/pdf"
-        capture="environment"
         multiple
         className="hidden"
-        onChange={(e) => upload(e.target.files)}
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = "";
+        }}
       />
-      <button
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-      >
-        {uploading ? "Working…" : "📷 Add receipts"}
-      </button>
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+
+      {/* Action buttons */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <button
+          onClick={() => galleryRef.current?.click()}
+          disabled={uploading}
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+        >
+          🖼️ Choose photos
+        </button>
+        <button
+          onClick={() => cameraRef.current?.click()}
+          disabled={uploading}
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-700 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-600 disabled:opacity-60"
+        >
+          📷 Take photo
+        </button>
+      </div>
+
       <p className="mt-2 text-xs text-slate-500">
-        Take a photo or choose one or more images / PDFs.
+        Add as many receipts as you need, then submit them all at once.
         {aiEnabled
           ? " AI fills in the merchant, amount and date for you."
           : " Enter the details manually after uploading."}
       </p>
+
+      {/* Staged file previews */}
+      {staged.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 text-sm font-medium text-slate-700">
+            {staged.length} receipt{staged.length === 1 ? "" : "s"} ready
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {staged.map((file, i) => (
+              <div
+                key={`${file.name}-${i}`}
+                className="group relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+              >
+                {file.type.startsWith("image/") ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={file.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-500">
+                    PDF
+                  </div>
+                )}
+                <button
+                  onClick={() => removeFile(i)}
+                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow-sm hover:bg-red-600"
+                  aria-label={`Remove ${file.name}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Submit button */}
+          <button
+            onClick={submit}
+            disabled={uploading}
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+          >
+            {uploading
+              ? "Working…"
+              : `Submit ${staged.length} receipt${staged.length === 1 ? "" : "s"}`}
+          </button>
+        </div>
+      )}
+
       {status && !uploading && (
         <p className="mt-3 text-sm text-emerald-700">{status}</p>
       )}
