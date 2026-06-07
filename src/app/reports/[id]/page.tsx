@@ -61,7 +61,6 @@ export default async function ReportPage({
 
   const expenseDTOs: ExpenseDTO[] = report.expenses.map((e) => ({
     id: e.id,
-    company: e.company,
     merchant: e.merchant,
     amount: e.amount,
     currency: e.currency,

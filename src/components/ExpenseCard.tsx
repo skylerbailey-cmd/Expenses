@@ -2,13 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CATEGORIES, COMPANIES } from "@/lib/constants";
+import { CATEGORIES } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { ReceiptLightbox } from "./ReceiptLightbox";
 
 export interface ExpenseDTO {
   id: string;
-  company: string | null;
   merchant: string | null;
   amount: number | null;
   currency: string;
@@ -30,7 +29,6 @@ export function ExpenseCard({
   duplicateWarning?: string;
 }) {
   const router = useRouter();
-  const [company, setCompany] = useState(expense.company ?? "");
   const [merchant, setMerchant] = useState(expense.merchant ?? "");
   const [amount, setAmount] = useState(
     expense.amount != null ? String(expense.amount) : ""
@@ -43,7 +41,6 @@ export function ExpenseCard({
   const [error, setError] = useState<string | null>(null);
 
   const dirty =
-    company !== (expense.company ?? "") ||
     merchant !== (expense.merchant ?? "") ||
     amount !== (expense.amount != null ? String(expense.amount) : "") ||
     date !== (expense.transactionDate ?? "") ||
@@ -58,7 +55,6 @@ export function ExpenseCard({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        company: company || null,
         merchant: merchant.trim() || null,
         amount: amount.trim() ? Number(amount) : null,
         category: category || null,
@@ -116,23 +112,7 @@ export function ExpenseCard({
       <div className="min-w-0">
           {editable ? (
             <div className="space-y-3">
-              {/* Company — full width */}
-              <Labeled label="Company">
-                <select
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm outline-none focus:border-slate-900"
-                >
-                  <option value="">Select…</option>
-                  {COMPANIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </Labeled>
-
-              {/* Merchant — full width so it never overlaps */}
+              {/* Merchant — full width */}
               <Labeled label="Merchant / vendor">
                 <input
                   value={merchant}
@@ -222,10 +202,6 @@ export function ExpenseCard({
 function ReadOnlyExpense({ expense }: { expense: ExpenseDTO }) {
   return (
     <dl className="space-y-1 text-sm">
-      <div className="flex justify-between">
-        <dt className="text-slate-500">Company</dt>
-        <dd className="font-medium text-slate-900">{expense.company ?? "—"}</dd>
-      </div>
       <div className="flex justify-between">
         <dt className="text-slate-500">Merchant</dt>
         <dd className="font-medium text-slate-900">{expense.merchant ?? "—"}</dd>
