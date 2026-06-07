@@ -27,6 +27,8 @@ export async function getReportForUser(reportId: string, user: SafeUser) {
   return report;
 }
 
-export function reportTotal(expenses: { amount: number | null }[]): number {
-  return expenses.reduce((sum, e) => sum + (e.amount ?? 0), 0);
+export function reportTotal(expenses: { amount: number | null; denied?: boolean }[]): number {
+  return expenses
+    .filter((e) => !e.denied)
+    .reduce((sum, e) => sum + (e.amount ?? 0), 0);
 }

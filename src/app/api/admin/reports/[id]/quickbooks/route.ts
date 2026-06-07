@@ -53,6 +53,10 @@ export async function POST(
   const errors: string[] = [];
 
   for (const expense of report.expenses) {
+    if (expense.denied) {
+      skipped.push(`${expense.merchant ?? "An expense"} (denied)`);
+      continue;
+    }
     if (expense.qboPurchaseId) {
       skipped.push(`${expense.merchant ?? "Expense"} (already in QuickBooks)`);
       continue;

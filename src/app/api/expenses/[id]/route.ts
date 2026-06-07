@@ -39,9 +39,8 @@ export async function PATCH(
   const expense = await loadExpenseFor(id, user.id, isStaff(user.role));
   if (!expense) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Employees can only edit while draft/returned; admins can edit anytime
-  // (e.g. to correct a report before approving it).
-  if (user.role !== "ADMIN" && !EDITABLE_BY_EMPLOYEE.has(expense.report.status)) {
+  // Employees can only edit while draft/returned; staff can edit submitted/approved.
+  if (!isStaff(user.role) && !EDITABLE_BY_EMPLOYEE.has(expense.report.status)) {
     return NextResponse.json(
       { error: "This report can no longer be edited." },
       { status: 409 }
@@ -58,6 +57,15 @@ export async function PATCH(
   }
 
   const d = parsed.data;
+
+  // Only staff can deny/restore expenses.
+  if (d.denied !== undefined && !isStaff(user.role)) {
+    return NextResponse.json(
+      { error: "Only managers and admins can deny expenses." },
+      { status: 403 }
+    );
+  }
+
   await prisma.expense.update({
     where: { id },
     data: {
@@ -74,6 +82,10 @@ export async function PATCH(
               : null,
           }
         : {}),
+      ...(d.denied !== undefined ? { denied: d.denied } : {}),
+      ...(d.deniedReason !== undefined ? { deniedReason: d.deniedReason } : {}),
+      // Clear denied reason when restoring.
+      ...(d.denied === false ? { deniedReason: null } : {}),
       // A human has reviewed this line.
       needsReview: false,
     },

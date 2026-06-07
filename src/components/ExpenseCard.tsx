@@ -16,6 +16,8 @@ export interface ExpenseDTO {
   transactionDate: string | null; // YYYY-MM-DD
   needsReview: boolean;
   aiConfidence: string | null;
+  denied: boolean;
+  deniedReason: string | null;
   images: { id: string; path: string }[];
 }
 
@@ -23,10 +25,12 @@ export function ExpenseCard({
   expense,
   editable,
   duplicateWarning,
+  isStaff = false,
 }: {
   expense: ExpenseDTO;
   editable: boolean;
   duplicateWarning?: string;
+  isStaff?: boolean;
 }) {
   const router = useRouter();
   const [merchant, setMerchant] = useState(expense.merchant ?? "");
@@ -39,6 +43,8 @@ export function ExpenseCard({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDenyForm, setShowDenyForm] = useState(false);
+  const [denyReason, setDenyReason] = useState("");
 
   const dirty =
     merchant !== (expense.merchant ?? "") ||
@@ -78,8 +84,51 @@ export function ExpenseCard({
     if (res.ok) router.refresh();
   }
 
+  async function denyExpense() {
+    setSaving(true);
+    const res = await fetch(`/api/expenses/${expense.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ denied: true, deniedReason: denyReason.trim() || null }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setShowDenyForm(false);
+      setDenyReason("");
+      router.refresh();
+    }
+  }
+
+  async function restoreExpense() {
+    setSaving(true);
+    const res = await fetch(`/api/expenses/${expense.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ denied: false }),
+    });
+    setSaving(false);
+    if (res.ok) router.refresh();
+  }
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className={`rounded-2xl border p-4 shadow-sm ${expense.denied ? "border-red-200 bg-red-50/50" : "border-slate-200 bg-white"}`}>
+      {expense.denied && (
+        <div className="mb-3 rounded-lg bg-red-50 px-3 py-2">
+          <p className="text-sm font-medium text-red-700">Denied</p>
+          {expense.deniedReason && (
+            <p className="mt-0.5 text-sm text-red-600">{expense.deniedReason}</p>
+          )}
+          {isStaff && (
+            <button
+              onClick={restoreExpense}
+              disabled={saving}
+              className="mt-2 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+            >
+              Restore expense
+            </button>
+          )}
+        </div>
+      )}
       {duplicateWarning && (
         <p className="mb-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
           <span aria-hidden>⚠️</span>
@@ -171,12 +220,22 @@ export function ExpenseCard({
               {error && <p className="text-sm text-red-600">{error}</p>}
 
               <div className="flex items-center justify-between">
-                <button
-                  onClick={remove}
-                  className="text-sm font-medium text-red-600 hover:text-red-700"
-                >
-                  Remove
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={remove}
+                    className="text-sm font-medium text-red-600 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                  {isStaff && !expense.denied && (
+                    <button
+                      onClick={() => setShowDenyForm(true)}
+                      className="text-sm font-medium text-red-600 hover:text-red-700"
+                    >
+                      Deny
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center gap-3">
                   {saved && !dirty && (
                     <span className="text-xs text-emerald-600">Saved</span>
@@ -190,9 +249,79 @@ export function ExpenseCard({
                   </button>
                 </div>
               </div>
+
+              {showDenyForm && (
+                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                  <label className="mb-1 block text-xs font-medium text-red-800">
+                    Reason for denial (optional)
+                  </label>
+                  <input
+                    value={denyReason}
+                    onChange={(e) => setDenyReason(e.target.value)}
+                    placeholder="e.g. Personal expense, not reimbursable"
+                    className="w-full rounded-lg border border-red-300 px-2.5 py-2 text-sm outline-none focus:border-red-500"
+                  />
+                  <div className="mt-2 flex justify-end gap-2">
+                    <button
+                      onClick={() => setShowDenyForm(false)}
+                      className="rounded-lg px-3 py-1.5 text-sm text-slate-600"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={denyExpense}
+                      disabled={saving}
+                      className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {saving ? "Denying…" : "Deny expense"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <ReadOnlyExpense expense={expense} />
+            <>
+              <ReadOnlyExpense expense={expense} />
+              {isStaff && !expense.denied && (
+                <div className="mt-3">
+                  {showDenyForm ? (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                      <label className="mb-1 block text-xs font-medium text-red-800">
+                        Reason for denial (optional)
+                      </label>
+                      <input
+                        value={denyReason}
+                        onChange={(e) => setDenyReason(e.target.value)}
+                        placeholder="e.g. Personal expense, not reimbursable"
+                        className="w-full rounded-lg border border-red-300 px-2.5 py-2 text-sm outline-none focus:border-red-500"
+                      />
+                      <div className="mt-2 flex justify-end gap-2">
+                        <button
+                          onClick={() => setShowDenyForm(false)}
+                          className="rounded-lg px-3 py-1.5 text-sm text-slate-600"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={denyExpense}
+                          disabled={saving}
+                          className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {saving ? "Denying…" : "Deny expense"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowDenyForm(true)}
+                      className="text-sm font-medium text-red-600 hover:text-red-700"
+                    >
+                      Deny this expense
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
     </div>

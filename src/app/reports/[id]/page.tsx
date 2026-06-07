@@ -69,6 +69,8 @@ export default async function ReportPage({
     transactionDate: toDateInputValue(e.transactionDate),
     needsReview: e.needsReview,
     aiConfidence: e.aiConfidence,
+    denied: e.denied,
+    deniedReason: e.deniedReason,
     images: e.images.map((img) => ({ id: img.id, path: img.path })),
   }));
 

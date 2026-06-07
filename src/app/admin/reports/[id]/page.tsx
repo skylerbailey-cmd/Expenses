@@ -73,6 +73,8 @@ export default async function AdminReportPage({
     transactionDate: toDateInputValue(e.transactionDate),
     needsReview: e.needsReview,
     aiConfidence: e.aiConfidence,
+    denied: e.denied,
+    deniedReason: e.deniedReason,
     images: e.images.map((img) => ({ id: img.id, path: img.path })),
   }));
 
@@ -109,6 +111,13 @@ export default async function AdminReportPage({
               {formatCurrency(total)}
             </span>
           </div>
+          {report.expenses.some((e) => e.denied) && (
+            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              {report.expenses.filter((e) => e.denied).length} expense
+              {report.expenses.filter((e) => e.denied).length === 1 ? "" : "s"} denied
+              — excluded from total.
+            </p>
+          )}
           {warnings.size > 0 && (
             <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
               ⚠️ {warnings.size} expense{warnings.size === 1 ? "" : "s"} flagged as
@@ -146,6 +155,7 @@ export default async function AdminReportPage({
               key={e.id}
               expense={e}
               editable={editable}
+              isStaff={true}
               duplicateWarning={warnings.get(e.id)?.message}
             />
           ))}
