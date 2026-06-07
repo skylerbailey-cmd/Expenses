@@ -134,7 +134,7 @@ export default async function ReportPage({
           )}
         </section>
 
-        {editable && report.expenses.length === 0 && report.status === "DRAFT" && (
+        {editable && (
           <DeleteReportButton reportId={report.id} />
         )}
 

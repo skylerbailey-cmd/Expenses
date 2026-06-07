@@ -59,10 +59,10 @@ export async function DELETE(
   const report = await getReportForUser(id, user);
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Only draft reports can be deleted, and only by their owner (or an admin).
-  if (report.status !== "DRAFT") {
+  // Employees can delete their own draft/returned reports; staff can delete any.
+  if (!isStaff(user.role) && !EDITABLE_BY_EMPLOYEE.has(report.status)) {
     return NextResponse.json(
-      { error: "Only draft reports can be deleted." },
+      { error: "This report can no longer be deleted." },
       { status: 409 }
     );
   }

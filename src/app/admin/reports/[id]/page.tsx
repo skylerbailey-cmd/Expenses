@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ExpenseCard, type ExpenseDTO } from "@/components/ExpenseCard";
 import { AdminActions } from "@/components/AdminActions";
+import { AdminDeleteReportButton } from "@/components/AdminDeleteReportButton";
 import { formatCurrency, formatDate, toDateInputValue } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -131,6 +132,10 @@ export default async function AdminReportPage({
             />
           ))}
         </section>
+
+        <div className="mt-6 border-t border-slate-200 pt-4">
+          <AdminDeleteReportButton reportId={report.id} />
+        </div>
       </main>
     </>
   );
