@@ -24,7 +24,13 @@ export function AppHeader({ user }: { user: SafeUser }) {
                 href="/admin"
                 className="text-sm font-medium text-slate-600 hover:text-slate-900"
               >
-                Admin
+                Reports
+              </Link>
+              <Link
+                href="/admin/employees"
+                className="text-sm font-medium text-slate-600 hover:text-slate-900"
+              >
+                Employees
               </Link>
               {user.role === "ADMIN" && (
                 <>
