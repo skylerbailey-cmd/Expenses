@@ -1,0 +1,104 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { EDITABLE_BY_EMPLOYEE } from "@/lib/reports";
+import { CATEGORIES } from "@/lib/constants";
+import { deleteUpload } from "@/lib/storage";
+
+const patchSchema = z.object({
+  merchant: z.string().trim().max(120).nullable().optional(),
+  amount: z.number().nonnegative().nullable().optional(),
+  currency: z.string().trim().max(8).optional(),
+  category: z.enum(CATEGORIES).nullable().optional(),
+  description: z.string().trim().max(500).nullable().optional(),
+  transactionDate: z.string().nullable().optional(), // YYYY-MM-DD
+});
+
+async function loadExpenseFor(expenseId: string, userId: string, isAdmin: boolean) {
+  const expense = await prisma.expense.findUnique({
+    where: { id: expenseId },
+    include: { report: true, images: true },
+  });
+  if (!expense) return null;
+  if (!isAdmin && expense.report.userId !== userId) return null;
+  return expense;
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const expense = await loadExpenseFor(id, user.id, user.role === "ADMIN");
+  if (!expense) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Employees can only edit while draft/returned; admins can edit anytime
+  // (e.g. to correct a report before approving it).
+  if (user.role !== "ADMIN" && !EDITABLE_BY_EMPLOYEE.has(expense.report.status)) {
+    return NextResponse.json(
+      { error: "This report can no longer be edited." },
+      { status: 409 }
+    );
+  }
+
+  const body = await request.json().catch(() => null);
+  const parsed = patchSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const d = parsed.data;
+  await prisma.expense.update({
+    where: { id },
+    data: {
+      ...(d.merchant !== undefined ? { merchant: d.merchant } : {}),
+      ...(d.amount !== undefined ? { amount: d.amount } : {}),
+      ...(d.currency !== undefined ? { currency: d.currency } : {}),
+      ...(d.category !== undefined ? { category: d.category } : {}),
+      ...(d.description !== undefined ? { description: d.description } : {}),
+      ...(d.transactionDate !== undefined
+        ? {
+            transactionDate: d.transactionDate
+              ? new Date(d.transactionDate)
+              : null,
+          }
+        : {}),
+      // A human has reviewed this line.
+      needsReview: false,
+    },
+  });
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const expense = await loadExpenseFor(id, user.id, user.role === "ADMIN");
+  if (!expense) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (user.role !== "ADMIN" && !EDITABLE_BY_EMPLOYEE.has(expense.report.status)) {
+    return NextResponse.json(
+      { error: "This report can no longer be edited." },
+      { status: 409 }
+    );
+  }
+
+  // Remove stored image files, then the row (cascade deletes ExpenseImage).
+  await Promise.all(expense.images.map((img) => deleteUpload(img.path)));
+  await prisma.expense.delete({ where: { id } });
+
+  return NextResponse.json({ ok: true });
+}

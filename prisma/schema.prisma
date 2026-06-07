@@ -1,0 +1,71 @@
+// Prisma schema for the Expenses app.
+// SQLite keeps the app self-contained and easy to run for a small business.
+// Switch `provider` to "postgresql" and update DATABASE_URL to scale later.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String          @id @default(cuid())
+  email        String          @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         String          @default("EMPLOYEE") // EMPLOYEE | ADMIN
+  createdAt    DateTime        @default(now())
+  reports      ExpenseReport[]
+}
+
+model ExpenseReport {
+  id                 String    @id @default(cuid())
+  title              String
+  submitterFirstName String
+  submitterLastName  String
+  // Workflow: DRAFT -> SUBMITTED -> (RETURNED -> SUBMITTED)* -> APPROVED -> PAID
+  status             String    @default("DRAFT")
+  adminNote          String?
+  user               User      @relation(fields: [userId], references: [id])
+  userId             String
+  expenses           Expense[]
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  submittedAt        DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Expense {
+  id              String         @id @default(cuid())
+  report          ExpenseReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reportId        String
+  merchant        String?
+  amount          Float?
+  currency        String         @default("USD")
+  category        String?
+  description     String?
+  transactionDate DateTime?
+  images          ExpenseImage[]
+  aiRaw           String? // JSON snapshot of what the AI returned
+  aiConfidence    String? // low | medium | high
+  needsReview     Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+
+  @@index([reportId])
+}
+
+model ExpenseImage {
+  id        String   @id @default(cuid())
+  expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  expenseId String
+  path      String // public web path, e.g. /uploads/abc.jpg
+  createdAt DateTime @default(now())
+
+  @@index([expenseId])
+}
