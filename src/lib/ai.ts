@@ -10,6 +10,8 @@ export interface ExtractedReceipt {
   description: string | null;
   transactionDate: string | null; // ISO YYYY-MM-DD
   confidence: "low" | "medium" | "high";
+  isItemizedReceipt: boolean;
+  receiptWarning: string | null;
 }
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
@@ -30,6 +32,8 @@ Return ONLY a JSON object with these exact keys:
 - "description": a short human description of the purchase (e.g. "Uber ride to airport").
 - "transactionDate": the date of the transaction in YYYY-MM-DD format. null if unreadable.
 - "confidence": "high", "medium", or "low" reflecting how sure you are overall.
+- "isItemizedReceipt": true if this is a legitimate itemized receipt, invoice, or official transaction record from a vendor. false if it is a bank/credit card statement, a screenshot of an app's transaction list, a personal note, a photo of a card charge, or anything that is NOT an actual receipt or invoice issued by a merchant.
+- "receiptWarning": if isItemizedReceipt is false, a short explanation of what the image appears to be and that an itemized receipt is required (e.g. "This appears to be a bank statement, not an itemized receipt. Please upload the original receipt from the merchant."). null if isItemizedReceipt is true.
 
 Rules:
 - The "amount" must be the grand total actually paid, not a subtotal or a single line item.
@@ -136,6 +140,8 @@ function parseExtraction(text: string): ExtractedReceipt | null {
       confidence: ["low", "medium", "high"].includes(raw.confidence)
         ? raw.confidence
         : "medium",
+      isItemizedReceipt: raw.isItemizedReceipt !== false,
+      receiptWarning: raw.receiptWarning ? String(raw.receiptWarning) : null,
     };
   } catch {
     return null;

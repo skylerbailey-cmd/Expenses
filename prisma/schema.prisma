@@ -60,6 +60,8 @@ model Expense {
   aiRaw           String? // JSON snapshot of what the AI returned
   aiConfidence    String? // low | medium | high
   needsReview     Boolean        @default(false)
+  receiptFlagged  Boolean        @default(false) // true when AI detects non-itemized receipt
+  receiptWarning  String?                        // explanation of why the receipt was flagged
   denied          Boolean        @default(false)
   deniedReason    String?
   qboPurchaseId   String? // QuickBooks Purchase id once synced (prevents duplicates)

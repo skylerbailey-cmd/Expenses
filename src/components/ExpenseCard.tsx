@@ -16,6 +16,8 @@ export interface ExpenseDTO {
   transactionDate: string | null; // YYYY-MM-DD
   needsReview: boolean;
   aiConfidence: string | null;
+  receiptFlagged: boolean;
+  receiptWarning: string | null;
   denied: boolean;
   deniedReason: string | null;
   images: { id: string; path: string }[];
@@ -134,6 +136,17 @@ export function ExpenseCard({
           <span aria-hidden>⚠️</span>
           <span>{duplicateWarning}</span>
         </p>
+      )}
+      {expense.receiptFlagged && (
+        <div className="mb-3 rounded-lg bg-orange-50 px-3 py-2">
+          <p className="text-sm font-medium text-orange-800">
+            Not an itemized receipt
+          </p>
+          <p className="mt-0.5 text-xs text-orange-700">
+            {expense.receiptWarning ||
+              "This does not appear to be an itemized receipt. Please upload the original receipt from the merchant if you have it. You can still submit without one."}
+          </p>
+        </div>
       )}
       {editable && expense.needsReview && (
         <p className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">

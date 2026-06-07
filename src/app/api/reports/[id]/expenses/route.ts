@@ -92,6 +92,8 @@ async function processFile(
     !extracted.merchant ||
     extracted.confidence === "low";
 
+  const receiptFlagged = extracted ? !extracted.isItemizedReceipt : false;
+
   const expense = await prisma.expense.create({
     data: {
       reportId,
@@ -106,6 +108,8 @@ async function processFile(
       aiRaw,
       aiConfidence: extracted?.confidence ?? null,
       needsReview,
+      receiptFlagged,
+      receiptWarning: extracted?.receiptWarning ?? null,
       images: { create: { path: webPath } },
     },
   });

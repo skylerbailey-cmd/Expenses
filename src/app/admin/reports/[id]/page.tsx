@@ -73,6 +73,8 @@ export default async function AdminReportPage({
     transactionDate: toDateInputValue(e.transactionDate),
     needsReview: e.needsReview,
     aiConfidence: e.aiConfidence,
+    receiptFlagged: e.receiptFlagged,
+    receiptWarning: e.receiptWarning,
     denied: e.denied,
     deniedReason: e.deniedReason,
     images: e.images.map((img) => ({ id: img.id, path: img.path })),
@@ -122,6 +124,13 @@ export default async function AdminReportPage({
             <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
               ⚠️ {warnings.size} expense{warnings.size === 1 ? "" : "s"} flagged as
               possible duplicate{warnings.size === 1 ? "" : "s"}.
+            </p>
+          )}
+          {report.expenses.some((e) => e.receiptFlagged) && (
+            <p className="mt-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-800">
+              {report.expenses.filter((e) => e.receiptFlagged).length} expense
+              {report.expenses.filter((e) => e.receiptFlagged).length === 1 ? "" : "s"}{" "}
+              missing an itemized receipt.
             </p>
           )}
         </div>
