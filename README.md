@@ -61,10 +61,50 @@ Employee:  DRAFT --submit--> SUBMITTED --> (RETURNED <-> SUBMITTED) --> APPROVED
 Admin:                       approve / return / edit              mark paid
 ```
 
+## Deploying to Railway
+
+This app runs as a normal long-lived Node server, so it deploys cleanly to
+Railway. The database (SQLite) and uploaded receipts both live on a **Railway
+Volume** so they survive restarts and redeploys.
+
+1. **Create the project**: in Railway, _New Project → Deploy from GitHub repo_
+   and pick this repository / branch. Railway auto-detects Next.js (Nixpacks)
+   and uses `railway.json` for the build and start commands.
+
+2. **Add a Volume** to the service (service → _Variables/Settings → Volumes_).
+   Set the **mount path to `/app/data`**.
+
+3. **Set environment variables** on the service:
+
+   | Variable            | Value                                                        |
+   | ------------------- | ------------------------------------------------------------ |
+   | `DATABASE_URL`      | `file:/app/data/prod.db`                                     |
+   | `UPLOAD_DIR`        | `/app/data/uploads`                                          |
+   | `SESSION_PASSWORD`  | a 32+ char random string (`openssl rand -base64 32`)         |
+   | `ANTHROPIC_API_KEY` | your Anthropic API key (enables AI receipt reading)          |
+   | `ADMIN_EMAIL`       | your email — that account becomes admin on first registration |
+   | `CLAUDE_MODEL`      | optional, defaults to `claude-sonnet-4-6`                    |
+
+   > If your service runs as a non-root user and hits volume permission errors,
+   > also set `RAILWAY_RUN_UID=0`.
+
+4. **Deploy.** On boot the start command runs `prisma migrate deploy` against
+   the volume database, then starts the server. Migrations run at start (not
+   build) because Railway only mounts the volume at runtime.
+
+5. **Generate a domain** (service → _Settings → Networking → Generate Domain_),
+   register with your `ADMIN_EMAIL`, and you're live.
+
+To promote an admin later: open the service shell and run
+`npm run make-admin -- you@example.com`.
+
 ## Notes for production
 
-- Uploaded receipts are stored on disk in `public/uploads`. For serverless or
-  multi-instance hosting, move these to object storage (S3, R2, etc.).
+- The database and uploaded receipts persist via the Railway Volume mounted at
+  `/app/data`. Take periodic volume backups for safety.
 - SQLite is great for a single small-business instance. For higher volume,
-  switch the Prisma `datasource` to PostgreSQL and update `DATABASE_URL`.
+  switch the Prisma `datasource` to PostgreSQL (e.g. Railway's managed Postgres)
+  and update `DATABASE_URL`.
+- Receipts are served through an authenticated route (`/api/files/...`), so only
+  signed-in users can view them.
 - Always set a strong `SESSION_PASSWORD` in production.
