@@ -33,9 +33,8 @@ function amountsClose(a: number | null, b: number | null): boolean {
 }
 
 /**
- * Two expenses are "likely duplicates" when the amount matches and at least one
- * of {merchant, date} also matches. This catches re-uploaded receipts while
- * tolerating slightly different OCR results.
+ * Two expenses are "likely duplicates" when all three match: same amount, same
+ * merchant, and same date.
  */
 function isLikelyDuplicate(a: DupCandidate, b: DupCandidate): boolean {
   if (!amountsClose(a.amount, b.amount)) return false;
@@ -44,7 +43,7 @@ function isLikelyDuplicate(a: DupCandidate, b: DupCandidate): boolean {
     normMerchant(a.merchant) === normMerchant(b.merchant);
   const sameDay = dayKey(a.transactionDate) !== "" &&
     dayKey(a.transactionDate) === dayKey(b.transactionDate);
-  return sameMerchant || sameDay;
+  return sameMerchant && sameDay;
 }
 
 /**
