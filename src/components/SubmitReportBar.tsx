@@ -48,13 +48,21 @@ export function SubmitReportBar({
           <p className="text-sm text-slate-500">
             {expenseCount} expense{expenseCount === 1 ? "" : "s"} ready
           </p>
-          <button
-            onClick={onClick}
-            disabled={submitting || expenseCount === 0}
-            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-          >
-            {submitting ? "Submitting…" : "Submit for approval"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Save &amp; close
+            </button>
+            <button
+              onClick={onClick}
+              disabled={submitting || expenseCount === 0}
+              className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {submitting ? "Submitting…" : "Submit for approval"}
+            </button>
+          </div>
         </div>
         {error && (
           <p className="mx-auto mt-2 max-w-3xl text-sm text-red-600">{error}</p>
