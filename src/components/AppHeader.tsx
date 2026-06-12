@@ -48,6 +48,12 @@ export function AppHeader({ user }: { user: SafeUser }) {
                   </Link>
                 </>
               )}
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium text-slate-600 hover:text-slate-900"
+              >
+                My Expenses
+              </Link>
             </>
           ) : (
             <Link
