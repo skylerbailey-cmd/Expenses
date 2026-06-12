@@ -7,6 +7,7 @@ export interface DupCandidate {
   transactionDate: Date | string | null;
   reportId: string;
   reportTitle?: string;
+  submitterName?: string;
 }
 
 export interface DuplicateWarning {
@@ -62,7 +63,14 @@ export function findDuplicateWarnings(
     sameReport: boolean
   ) => {
     const existingWarn = warnings.get(expenseId);
-    const where = sameReport ? "in this report" : `in "${other.reportTitle ?? "another report"}"`;
+    let where: string;
+    if (sameReport) {
+      where = "in this report";
+    } else {
+      const title = other.reportTitle ?? "another report";
+      const byWhom = other.submitterName ? ` by ${other.submitterName}` : "";
+      where = `in "${title}"${byWhom}`;
+    }
     const message = `Looks like a possible duplicate ${where}.`;
     if (existingWarn) {
       existingWarn.matches.push({

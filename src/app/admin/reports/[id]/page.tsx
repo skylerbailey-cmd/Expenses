@@ -29,7 +29,7 @@ export default async function AdminReportPage({
   // Admins may correct figures while a report is under review (not after payment).
   const editable = report.status === "SUBMITTED" || report.status === "APPROVED";
 
-  // Duplicate warnings within the report and against the submitter's history.
+  // Duplicate warnings within the report and against ALL employees' expenses.
   const current: DupCandidate[] = report.expenses.map((e) => ({
     id: e.id,
     merchant: e.merchant,
@@ -38,14 +38,20 @@ export default async function AdminReportPage({
     reportId: report.id,
   }));
   const otherExpenses = await prisma.expense.findMany({
-    where: { report: { userId: report.userId }, reportId: { not: report.id } },
+    where: { reportId: { not: report.id } },
     select: {
       id: true,
       merchant: true,
       amount: true,
       transactionDate: true,
       reportId: true,
-      report: { select: { title: true } },
+      report: {
+        select: {
+          title: true,
+          submitterFirstName: true,
+          submitterLastName: true,
+        },
+      },
     },
   });
   const existing: DupCandidate[] = otherExpenses.map((e) => ({
@@ -55,6 +61,7 @@ export default async function AdminReportPage({
     transactionDate: e.transactionDate,
     reportId: e.reportId,
     reportTitle: e.report.title,
+    submitterName: `${e.report.submitterFirstName} ${e.report.submitterLastName}`,
   }));
   const warnings = findDuplicateWarnings(current, existing);
 
