@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 
 const schema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8, "Password must be at least 8 characters."),
 });
 
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
   const { email, password } = parsed.data;
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
+    where: { email },
   });
 
   if (!user) {
