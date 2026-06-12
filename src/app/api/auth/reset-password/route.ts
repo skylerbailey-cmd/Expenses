@@ -24,8 +24,10 @@ export async function POST(request: Request) {
   });
 
   if (!user) {
-    // Don't reveal whether the email exists.
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(
+      { error: "No account found with that email." },
+      { status: 404 }
+    );
   }
 
   const passwordHash = await bcrypt.hash(password, 10);

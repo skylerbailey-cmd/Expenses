@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { deleteUpload } from "@/lib/storage";
 
 const patchSchema = z.object({
-  role: z.enum(["EMPLOYEE", "MANAGER", "ADMIN"]),
+  role: z.enum(["EMPLOYEE", "MANAGER", "ADMIN"]).optional(),
+  newPassword: z.string().min(8).optional(),
 });
 
 // Change a user's role (admin only).
@@ -37,9 +39,19 @@ export async function PATCH(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const updateData: Record<string, string> = {};
+  if (parsed.data.role) updateData.role = parsed.data.role;
+  if (parsed.data.newPassword) {
+    updateData.passwordHash = await bcrypt.hash(parsed.data.newPassword, 10);
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
+
   await prisma.user.update({
     where: { id },
-    data: { role: parsed.data.role },
+    data: updateData,
   });
 
   return NextResponse.json({ ok: true });

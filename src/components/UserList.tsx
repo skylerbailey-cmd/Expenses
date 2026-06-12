@@ -34,6 +34,8 @@ export function UserList({
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   async function changeRole(userId: string, newRole: string) {
     setBusy(userId);
@@ -71,6 +73,30 @@ export function UserList({
       return;
     }
     router.refresh();
+  }
+
+  async function resetPassword(userId: string) {
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    setBusy(userId);
+    setError(null);
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPassword: newPassword }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(null);
+    if (!res.ok) {
+      setError(data.error ?? "Could not reset password.");
+      return;
+    }
+    setResettingId(null);
+    setNewPassword("");
+    setError(null);
+    alert("Password has been reset.");
   }
 
   return (
@@ -116,6 +142,7 @@ export function UserList({
                 </div>
 
                 {!isSelf && (
+                  <>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="text-xs text-slate-400">Change role:</span>
                     {["EMPLOYEE", "MANAGER", "ADMIN"].map((role) => (
@@ -132,7 +159,17 @@ export function UserList({
                         {ROLE_LABELS[role]}
                       </button>
                     ))}
-                    <div className="ml-auto">
+                    <div className="ml-auto flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          setResettingId(resettingId === u.id ? null : u.id);
+                          setNewPassword("");
+                        }}
+                        disabled={loading}
+                        className="text-sm font-medium text-slate-600 hover:text-slate-900 disabled:opacity-40"
+                      >
+                        Reset password
+                      </button>
                       <button
                         onClick={() =>
                           removeUser(u.id, `${u.firstName} ${u.lastName}`)
@@ -144,6 +181,31 @@ export function UserList({
                       </button>
                     </div>
                   </div>
+
+                  {resettingId === u.id && (
+                    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                        New password for {u.firstName}
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Min 8 characters"
+                          className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none focus:border-slate-900"
+                        />
+                        <button
+                          onClick={() => resetPassword(u.id)}
+                          disabled={loading || newPassword.length < 8}
+                          className="shrink-0 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                        >
+                          {loading ? "..." : "Set"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  </>
                 )}
               </li>
             );
