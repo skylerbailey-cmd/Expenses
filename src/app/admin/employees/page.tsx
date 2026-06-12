@@ -10,10 +10,15 @@ export const dynamic = "force-dynamic";
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; filter?: string }>;
 }) {
   const user = await requireAdmin();
-  const { from, to } = await searchParams;
+  const { from, to, filter } = await searchParams;
+  const activeFilter = (["owed", "paid", "pending"].includes(filter ?? "") ? filter : null) as
+    | "owed"
+    | "paid"
+    | "pending"
+    | null;
 
   // Parse date filters.
   const fromDate = from ? new Date(`${from}T00:00:00`) : null;
@@ -84,17 +89,37 @@ export default async function EmployeesPage({
     };
   });
 
+  // Filter employees based on selected filter.
+  const filteredSummaries = activeFilter
+    ? summaries.filter((u) => {
+        if (activeFilter === "owed") return u.approvedAmount > 0;
+        if (activeFilter === "paid") return u.paidAmount > 0;
+        if (activeFilter === "pending") return u.pendingAmount > 0;
+        return true;
+      })
+    : summaries;
+
   // Totals across all employees.
   const totalApproved = summaries.reduce((s, u) => s + u.approvedAmount, 0);
   const totalPaid = summaries.reduce((s, u) => s + u.paidAmount, 0);
   const totalPending = summaries.reduce((s, u) => s + u.pendingAmount, 0);
+
+  // Build filter query string preserving date params.
+  function filterHref(f: string | null) {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (f) params.set("filter", f);
+    const qs = params.toString();
+    return `/admin/employees${qs ? `?${qs}` : ""}`;
+  }
 
   return (
     <>
       <AppHeader user={user} />
       <main className="mx-auto max-w-3xl px-4 py-6">
         <h1 className="text-xl font-bold tracking-tight">
-          Employees
+          Reimbursements
         </h1>
         <p className="mt-1 text-sm text-slate-500">
           Expense summary by employee. Click on a name to see their reports.
@@ -102,6 +127,13 @@ export default async function EmployeesPage({
 
         <div className="mt-4">
           <DateRangeFilter />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <FilterChip href={filterHref(null)} label="All" active={!activeFilter} />
+          <FilterChip href={filterHref("owed")} label="Owed" active={activeFilter === "owed"} />
+          <FilterChip href={filterHref("paid")} label="Paid" active={activeFilter === "paid"} />
+          <FilterChip href={filterHref("pending")} label="Pending" active={activeFilter === "pending"} />
         </div>
 
         {/* Totals bar */}
@@ -123,13 +155,13 @@ export default async function EmployeesPage({
           />
         </div>
 
-        {summaries.length === 0 ? (
+        {filteredSummaries.length === 0 ? (
           <p className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
-            No employees found.
+            {activeFilter ? `No employees with ${activeFilter} expenses.` : "No employees found."}
           </p>
         ) : (
           <ul className="mt-5 space-y-2">
-            {summaries.map((u) => (
+            {filteredSummaries.map((u) => (
               <li key={u.id}>
                 <Link
                   href={`/admin/employees/${u.id}`}
@@ -178,6 +210,29 @@ export default async function EmployeesPage({
         )}
       </main>
     </>
+  );
+}
+
+function FilterChip({
+  href,
+  label,
+  active,
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-full px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition ${
+        active
+          ? "bg-slate-900 text-white ring-slate-900"
+          : "bg-white text-slate-600 ring-slate-200 hover:ring-slate-300"
+      }`}
+    >
+      {label}
+    </Link>
   );
 }
 

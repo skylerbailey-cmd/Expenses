@@ -23,7 +23,7 @@ export function AppHeader({ user }: { user: AppHeaderUser }) {
         Reports
       </Link>
       <Link href="/admin/employees" className={linkClass} onClick={() => setOpen(false)}>
-        Employees
+        Reimbursements
       </Link>
       {user.role === "ADMIN" && (
         <>
